@@ -1,60 +1,42 @@
-const vertexShaderSource = `
-attribute vec3 vertex;
-uniform mat4 ModelViewMatrix;
-uniform mat4 ProjectionMatrix;
-uniform vec4 color;
-varying vec4 vColor;
+const vertexShaderSource =
+`attribute vec3 aVertex;
+attribute vec2 aTexCoord;
 
-void main() {
-    gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(vertex, 1.0);
-    vColor = color;
-}`;
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix;
+uniform bool uFullScreenQuad;
 
-const fragmentShaderSource = `
-precision mediump float;
-varying vec4 vColor;
+varying vec2 vTexCoord;
 
-void main() {
-    gl_FragColor = vColor;
-}`;
-
-// Shader for WebCam
-const vertexShaderWebCamSource = `#version 300 es
-out vec2 vTexCoord;
-
-void main() 
-{
-    vec2 positions[6] = vec2[](
-        vec2(-1.0, -1.0),
-        vec2( 1.0, -1.0),
-        vec2(-1.0,  1.0),
-        vec2(-1.0,  1.0),
-        vec2( 1.0, -1.0),
-        vec2( 1.0,  1.0)
-    );
-
-   vec2 uvs[6] = vec2[](
-        vec2(0.0, 1.0),  
-        vec2(1.0, 1.0),  
-        vec2(0.0, 0.0),  
-        vec2(0.0, 0.0),  
-        vec2(1.0, 1.0),  
-        vec2(1.0, 0.0)   
-    );
-    vTexCoord = uvs[gl_VertexID];
-    gl_Position = vec4(positions[gl_VertexID], 0.0, 1.0);
+void main(void) {
+    if(uFullScreenQuad) {
+        gl_Position = vec4(aVertex, 1.0);
+        vTexCoord = vec2(1.0 - aTexCoord.s, 1.0 - aTexCoord.t);
+    } else {
+        vTexCoord = aTexCoord;
+        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertex, 1.0);
+    }
 }
-
 `;
 
-const fragmentShaderWebCamSource = `#version 300 es
-precision mediump float;
+const fragmentShaderSource =
+`#ifdef GL_FRAGMENT_PRECISION_HIGH
+  precision highp float;
+#else
+  precision mediump float;
+#endif
 
-uniform sampler2D video;
+uniform bool uUseTexture;
+uniform sampler2D uSampler;
+uniform vec4 uColor;
 
-in vec2 vTexCoord;
-out vec4 outColor;
+varying vec2 vTexCoord;
 
-void main() {
-    outColor = texture(video, vTexCoord);
-}`;
+void main(void) {
+    if(uUseTexture) {
+        gl_FragColor = texture2D(uSampler, vTexCoord);
+    } else {
+        gl_FragColor = uColor;
+    }
+}
+`;

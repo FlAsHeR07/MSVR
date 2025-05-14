@@ -1,89 +1,141 @@
-function Model(name) {
-    this.name = name;
+function ModelSurface() {
     this.iVertexBuffer = gl.createBuffer();
-    this.iIndexBuffer = gl.createBuffer();
-    this.count = 0;
-    this.type = gl.TRIANGLES;
+    this.vertexList = [];
+    this.uLineCount = 0;
+    this.pointsPerULine = 0;
+    this.vLineCount = 0;
+    this.pointsPerVLine = 0;
 
-    this.BufferData = function(vertices, indices) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shProgram.iAttribVertex);
+    this.iTexCoordBuffer = gl.createBuffer();
+    this.texCoordList = [];
 
-        if (indices) {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iIndexBuffer);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STREAM_DRAW);
-            this.count = indices.length;
-        } else {
-            this.count = vertices.length / 3;
+    this.iFillIndexBuffer = null;
+    this.fillIndices = [];
+    this.fillIndexCount = 0;
+    this.fillVertexCount = 0;
+
+    this.CreateSurfaceData = function() {
+    const a = 2;
+    const b = 2;
+    const n = 1;
+    const uSegments = 50;
+    const vSegments = 8;
+    const vMax = 0.8;
+
+    const du = (2 * Math.PI) / uSegments;
+    const dv = (2 * vMax) / vSegments;
+
+    this.uLineCount = uSegments + 1;
+    this.pointsPerULine = vSegments + 1;
+
+    this.vertexList = [];
+    this.texCoordList = [];
+
+    // --- Вершини (u, v)
+    for (let i = 0; i <= uSegments; i++) {
+        let u = i * du;
+        for (let j = 0; j <= vSegments; j++) {
+            let v = -vMax + j * dv;
+
+            const sin_nu = Math.sin(n * u);
+            const cos_nu = Math.cos(n * u);
+
+            const R = a + b * sin_nu;
+
+            const x = R * Math.cos(u) - v * Math.sin(u);
+            const y = R * Math.sin(u) + v * Math.cos(u);
+            const z = b * cos_nu;
+
+            this.vertexList.push(x, y, z);
+
+            let uTex = u / (2 * Math.PI);
+            let vTex = (v + vMax) / (2 * vMax);
+            this.texCoordList.push(uTex, vTex);
         }
     }
+
+    this.fillVertexCount = this.uLineCount * this.pointsPerULine;
+    this.vLineCount = this.pointsPerULine;
+    this.pointsPerVLine = this.uLineCount;
+
+    // --- Поверхня для ліній по v (опціонально)
+    for (let j = 0; j <= vSegments; j++) {
+        let v = -vMax + j * dv;
+        for (let i = 0; i <= uSegments; i++) {
+            let u = i * du;
+
+            const sin_nu = Math.sin(n * u);
+            const cos_nu = Math.cos(n * u);
+
+            const R = a + b * sin_nu;
+
+            const x = R * Math.cos(u) - v * Math.sin(u);
+            const y = R * Math.sin(u) + v * Math.cos(u);
+            const z = b * cos_nu;
+
+            this.vertexList.push(x, y, z);
+
+            let uTex = u / (2 * Math.PI);
+            let vTex = (v + vMax) / (2 * vMax);
+            this.texCoordList.push(uTex, vTex);
+        }
+    }
+
+    // --- Буфери
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertexList), gl.STATIC_DRAW);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.texCoordList), gl.STATIC_DRAW);
+
+    // --- Індекси для трикутників
+    this.fillIndices = [];
+    for (let i = 0; i < uSegments; i++) {
+        for (let j = 0; j < vSegments; j++) {
+            let idx = i * this.pointsPerULine + j;
+            this.fillIndices.push(idx, idx + this.pointsPerULine, idx + 1);
+            this.fillIndices.push(idx + this.pointsPerULine, idx + this.pointsPerULine + 1, idx + 1);
+        }
+    }
+
+    this.fillIndexCount = this.fillIndices.length;
+
+    this.iFillIndexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iFillIndexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.fillIndices), gl.STATIC_DRAW);
+};
+
+
 
     this.Draw = function() {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
-        
-        if (this.type === gl.TRIANGLES && this.iIndexBuffer) {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iIndexBuffer);
-            gl.drawElements(this.type, this.count, gl.UNSIGNED_SHORT, 0);
-        } else {
-            gl.drawArrays(this.type, 0, this.count);
-        }
-    }
 
-    this.DrawWireframe = function() {
-        if (this.iIndexBuffer) {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iIndexBuffer);
-            for (let p=0; p<this.count; p+=3)
-                gl.drawElements(gl.LINE_LOOP, 3, gl.UNSIGNED_SHORT, p*2);
-        }
-    }
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
+        gl.vertexAttribPointer(shProgram.iAttribTexCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iAttribTexCoord);
 
-    // Ruled Rotor Cylindroid Vertex
-    this.CreateVertex = function(a, b, n, u, v) {
-        const sin_nu = Math.sin(n * u);
-        const cos_nu = Math.cos(n * u);
-        
-        const x = (a + b * sin_nu) * Math.cos(u) - v * Math.sin(u);
-        const y = (a + b * sin_nu) * Math.sin(u) + v * Math.cos(u);
-        const z = b * cos_nu;
-        
-        return [x, y, z];
-    }
-
-    this.CreateSurface = function(a, b, n, uSegments, vSegments, vMax) {
-        let vertices = [];
-        let indices = [];
-
-        let uStep = (2 * Math.PI) / uSegments;
-        let vStep = (2 * vMax) / vSegments;
-
-        // Вершины
-        for (let i = 0; i <= uSegments; i++) {
-            let u = i * uStep;
-            for (let j = 0; j <= vSegments; j++) {
-                let v = -vMax + j * vStep;
-                let vertex = this.CreateVertex(a, b, n, u, v);
-                vertices.push(vertex[0], vertex[1], vertex[2]);
-            }
+        for (let i = 0; i < this.uLineCount; i++) {
+            gl.drawArrays(gl.LINE_STRIP, i * this.pointsPerULine, this.pointsPerULine);
         }
 
-        // Индексы
-        for (let i = 0; i < uSegments; i++) {
-            for (let j = 0; j < vSegments; j++) {
-                let v0 = i * (vSegments + 1) + j;
-                let v1 = v0 + 1;
-                let v2 = v0 + (vSegments + 1);
-                let v3 = v2 + 1;
-
-                indices.push(v0, v1, v2);
-                indices.push(v2, v1, v3);
-            }
+        let offset = this.uLineCount * this.pointsPerULine;
+        for (let i = 0; i < this.vLineCount; i++) {
+            gl.drawArrays(gl.LINE_STRIP, offset + i * this.pointsPerVLine, this.pointsPerVLine);
         }
+    };
 
-        this.BufferData(new Float32Array(vertices), new Uint16Array(indices));
-    }
+    this.DrawFilled = function() {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
+        gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iAttribVertex);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
+        gl.vertexAttribPointer(shProgram.iAttribTexCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iAttribTexCoord);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iFillIndexBuffer);
+        gl.drawElements(gl.TRIANGLES, this.fillIndexCount, gl.UNSIGNED_SHORT, 0);
+    };
 }
