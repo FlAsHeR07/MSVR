@@ -1,164 +1,167 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Anaglyphic Stereo Rendering</title>
-    <style>
-      body {
-        background-color: #eeeeee;
-        font-family: Arial, sans-serif;
-      }
-      body {
-        background-color: #eeeeee;
-        display: flex;
-        justify-content: center;
-        flex-direction: column;
-        align-items: center;
-      }
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anaglyphic Stereo Rendering</title>
+  <style>
+    body {
+      background-color: #eeeeee;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
 
-      button {
-        background-color: rgba(255, 255, 255, 0.7);
-        border: none;
-        border-radius: 4px;
-        padding: 10px;
-        font-size: 20px;
-        cursor: pointer;
-        margin-left: 5px;
-      }
+    h2, p {
+      margin: 10px 0;
+    }
 
-      button:hover {
-        background-color: rgba(255, 255, 255, 1);
-      }
-      .inputContainer {
-        display: flex;
-        flex-direction: row;
-        gap: 8px;
-        height: 30px;
-        align-items: center;
-      }
-      .controls {
-        margin: 10px 0;
-        padding: 15px;
-        background-color: #f0f0f0;
-        border-radius: 5px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .control-group {
-        margin-bottom: 10px;
-      }
-      label {
-        display: inline-block;
-        width: 200px;
-      }
-      input[type="range"] {
-        width: 300px;
-        vertical-align: middle;
-      }
-      .value-display {
-        display: inline-block;
-        width: 50px;
-        text-align: center;
-      }
-    </style>
+    button {
+      background-color: rgba(255, 255, 255, 0.7);
+      border: none;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 20px;
+      cursor: pointer;
+      margin-left: 5px;
+    }
 
-    <script src="./Utils/trackball-rotator.js"></script>
-    <script src="./Utils/m4.js"></script>
-    <script src="./StereoCamera.js"></script>
-    <script src="./Texture.js"></script>
-    <script src="./shader.gpu"></script>
-    <script src="./Model.js"></script>
-    <script src="./main.js"></script>
-  </head>
-  <body onload="init()">
-    <h2 style="margin: 10px 0;">Anaglyphic Stereo Rendering with Webcam Background</h2>
+    button:hover {
+      background-color: rgba(255, 255, 255, 1);
+    }
 
-    <p style="margin: 10px 0;">Ruled Rotor Cylindroid</p>
+    .controls {
+      margin: 10px 0;
+      padding: 15px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
 
-    <div class="controls">
-      <h3 style="margin: 10px 0;"> Stereo Camera Parameters</h3>
+    .control-group {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-      <div class="control-group">
-        <label for="eyeSeparation">Eye Separation: </label>
-        <input
-          type="range"
-          id="eyeSeparation"
-          min="0.1"
-          max="2.0"
-          step="0.1"
-          value="0.9"
-          oninput="updateEyeSepValue(this.value); updateParameters();"
-        />
-        <span class="value-display" id="eyeSepValue">0.7</span>
-      </div>
+    label {
+      width: 200px;
+    }
 
-      <div class="control-group">
-        <label for="fov">Field of View (radians): </label>
-        <input
-          type="range"
-          id="fov"
-          min="0.1"
-          max="1.0"
-          step="0.05"
-          value="0.7"
-          oninput="updateFovValue(this.value); updateParameters();"
-        />
-        <span class="value-display" id="fovValue">0.7</span>
-      </div>
+    input[type="range"] {
+      width: 300px;
+      vertical-align: middle;
+    }
 
-      <div class="control-group">
-        <label for="nearClipping">Near Clipping Distance: </label>
-        <input
-          type="range"
-          id="nearClipping"
-          min="1.0"
-          max="10.0"
-          step="0.5"
-          value="8.0"
-          oninput="updateNearValue(this.value); updateParameters();"
-        />
-        <span class="value-display" id="nearValue">8.0</span>
-      </div>
+    .value-display {
+      width: 50px;
+      text-align: center;
+    }
 
-      <div class="control-group">
-        <label for="convergence">Convergence Distance: </label>
-        <input
-          type="range"
-          id="convergence"
-          min="10.0"
-          max="20.0"
-          step="0.5"
-          value="14.0"
-          oninput="updateConvValue(this.value); updateParameters();"
-        />
-        <span class="value-display" id="convValue">14.0</span>
-      </div>
-    </div>
+    #canvas-holder {
+      margin-top: 20px;
+    }
 
-    <div id="canvas-holder">
-      <canvas
-        width="800"
-        height="600"
-        id="webglcanvas"
-        style="border: 1px solid black"
-      ></canvas>
-    </div>
+    canvas {
+      border: 1px solid black;
+    }
+  </style>
 
-    <script>
-      function updateEyeSepValue(value) {
-        document.getElementById("eyeSepValue").textContent = value;
-      }
+  <script src="./Utils/trackball-rotator.js"></script>
+  <script src="./Utils/m4.js"></script>
+  <script src="./StereoCamera.js"></script>
+  <script src="./Texture.js"></script>
+  <script src="./shader.gpu"></script>
+  <script src="./Model.js"></script>
+  <script src="./main.js"></script>
+</head>
 
-      function updateFovValue(value) {
-        document.getElementById("fovValue").textContent = value;
-      }
+<body onload="init()">
+<h2>Anaglyphic Stereo Rendering with Webcam Background</h2>
+<p>Ruled Rotor Cylindroid</p>
 
-      function updateNearValue(value) {
-        document.getElementById("nearValue").textContent = value;
-      }
+<div class="controls">
+  <h3>Stereo Camera Parameters</h3>
 
-      function updateConvValue(value) {
-        document.getElementById("convValue").textContent = value;
-      }
-    </script>
-  </body>
+  <div class="control-group">
+    <label for="eyeSeparation">Eye Separation:</label>
+    <input
+            type="range"
+            id="eyeSeparation"
+            min="0.1"
+            max="2.0"
+            step="0.1"
+            value="0.9"
+            oninput="updateEyeSepValue(this.value); updateParameters();"
+    />
+    <span class="value-display" id="eyeSepValue">0.7</span>
+  </div>
+
+  <div class="control-group">
+    <label for="fov">Field of View (radians):</label>
+    <input
+            type="range"
+            id="fov"
+            min="0.1"
+            max="1.0"
+            step="0.05"
+            value="0.7"
+            oninput="updateFovValue(this.value); updateParameters();"
+    />
+    <span class="value-display" id="fovValue">0.7</span>
+  </div>
+
+  <div class="control-group">
+    <label for="nearClipping">Near Clipping Distance:</label>
+    <input
+            type="range"
+            id="nearClipping"
+            min="1.0"
+            max="10.0"
+            step="0.5"
+            value="8.0"
+            oninput="updateNearValue(this.value); updateParameters();"
+    />
+    <span class="value-display" id="nearValue">8.0</span>
+  </div>
+
+  <div class="control-group">
+    <label for="convergence">Convergence Distance:</label>
+    <input
+            type="range"
+            id="convergence"
+            min="10.0"
+            max="20.0"
+            step="0.5"
+            value="14.0"
+            oninput="updateConvValue(this.value); updateParameters();"
+    />
+    <span class="value-display" id="convValue">14.0</span>
+  </div>
+</div>
+
+<div id="canvas-holder">
+  <canvas id="webglcanvas" width="800" height="600"></canvas>
+</div>
+
+<script>
+  const updateEyeSepValue = value => {
+    document.getElementById("eyeSepValue").textContent = value;
+  };
+
+  const updateFovValue = value => {
+    document.getElementById("fovValue").textContent = value;
+  };
+
+  const updateNearValue = value => {
+    document.getElementById("nearValue").textContent = value;
+  };
+
+  const updateConvValue = value => {
+    document.getElementById("convValue").textContent = value;
+  };
+</script>
+</body>
 </html>
