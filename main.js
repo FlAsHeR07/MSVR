@@ -48,7 +48,7 @@ new THREEx.ArMarkerControls(arContext, markerRoot, {
 const geom = createModelSurfaceGeometry();
 const mat = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
 const mesh = new THREE.Mesh(geom, mat);
-mesh.scale.set(0.4, 0.4, 0.4);
+mesh.scale.set(0.1, 0.1, 0.1);
 markerRoot.add(mesh);
 
 // === Render Loop ===
